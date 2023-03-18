@@ -234,14 +234,6 @@ def main():
                         type=int,
                         default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
-    parser.add_argument('--fp16',
-                        action='store_true',
-                        help="Whether to use 16-bit float precision instead of 32-bit")
-    parser.add_argument('--loss_scale',
-                        type=float, default=0,
-                        help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
-                             "0 (default value): dynamic loss scaling.\n"
-                             "Positive power of 2: static loss scaling value.\n")
     parser.add_argument('--server_ip', type=str, default='', help="Can be used for distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="Can be used for distant debugging.")
     args = parser.parse_args()
@@ -282,8 +274,8 @@ def main():
                         datefmt='%m/%d/%Y %H:%M:%S',
                         level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
 
-    logger.info("device: {} n_gpu: {}, distributed training: {}, 16-bits training: {}".format(
-        device, n_gpu, bool(args.local_rank != -1), args.fp16))
+    logger.info("device: {} n_gpu: {}, distributed training: {}".format(
+        device, n_gpu, bool(args.local_rank != -1)))
 
     if args.gradient_accumulation_steps < 1:
         raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
@@ -306,7 +298,7 @@ def main():
         os.makedirs(args.output_dir)
 
     # save configs
-    f = open(os.path.join(args.output_dir, 'args.json'), 'w')
+    f = open(os.path.join(args.output_dir, 'args.json'), 'w', encoding='utf-8')
     json.dump(args.__dict__, f, indent=4)
     f.close()
 
@@ -342,16 +334,8 @@ def main():
         model = BertForSequenceClassification.from_pretrained(args.output_dir, num_labels=num_labels)
     model.to(device)
 
-    if args.fp16:
-        model.half()
-
     if args.local_rank != -1:
-        try:
-            from apex.parallel import DistributedDataParallel as DDP
-        except ImportError:
-            raise ImportError(
-                "Please install apex from https://www.github.com/nvidia/apex to use distributed and fp16 training.")
-
+        from torch.nn.parallel import DistributedDataParallel as DDP
         model = DDP(model)
     # elif n_gpu > 1:
     #     model = torch.nn.DataParallel(model)
@@ -363,31 +347,11 @@ def main():
         {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
     ]
-    if args.fp16:
-        try:
-            from apex.optimizers import FP16_Optimizer
-            from apex.optimizers import FusedAdam
-        except ImportError:
-            raise ImportError(
-                "Please install apex from https://www.github.com/nvidia/apex to use distributed and fp16 training.")
-
-        optimizer = FusedAdam(optimizer_grouped_parameters,
-                              lr=args.learning_rate,
-                              bias_correction=False,
-                              max_grad_norm=1.0)
-        if args.loss_scale == 0:
-            optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
-        else:
-            optimizer = FP16_Optimizer(optimizer, static_loss_scale=args.loss_scale)
-        warmup_linear = WarmupLinearSchedule(warmup=args.warmup_proportion,
-                                             t_total=num_train_optimization_steps)
-
-    else:
-        if args.do_train:
-            optimizer = BertAdam(optimizer_grouped_parameters,
-                                 lr=args.learning_rate,
-                                 warmup=args.warmup_proportion,
-                                 t_total=num_train_optimization_steps)
+    if args.do_train:
+        optimizer = BertAdam(optimizer_grouped_parameters,
+                             lr=args.learning_rate,
+                             warmup=args.warmup_proportion,
+                             t_total=num_train_optimization_steps)
 
     global_step = 0
     nb_tr_steps = 0
@@ -461,10 +425,7 @@ def main():
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
                 tr_loss += loss.item()
-                if args.fp16:
-                    optimizer.backward(loss)
-                else:
-                    loss.backward()
+                loss.backward()
 
                 # regularize explanations
                 # NOTE: backward performed inside this function to prevent OOM
@@ -478,14 +439,6 @@ def main():
                 nb_tr_examples += input_ids.size(0)
                 nb_tr_steps += 1
                 if (step + 1) % args.gradient_accumulation_steps == 0:
-                    if args.fp16:
-                        # modify learning rate with special warm up BERT uses
-                        # if args.fp16 is False, BertAdam is used that handles this automatically
-                        lr_this_step = args.learning_rate * warmup_linear.get_lr(
-                            global_step / num_train_optimization_steps,
-                            args.warmup_proportion)
-                        for param_group in optimizer.param_groups:
-                            param_group['lr'] = lr_this_step
                     optimizer.step()
                     optimizer.zero_grad()
                     global_step += 1
@@ -614,7 +567,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
     output_eval_file = os.path.join(args.output_dir, "eval_results_%d_%s_%s.txt"
                                     % (global_step, split, args.task_name))
-    with open(output_eval_file, "w") as writer:
+    with open(output_eval_file, "w", encoding='utf-8') as writer:
         logger.info("***** Eval results *****")
         logger.info("Epoch %d" % epoch)
         for key in sorted(result.keys()):
@@ -623,7 +576,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
     output_detail_file = os.path.join(args.output_dir, "eval_details_%d_%s_%s.txt"
                                     % (global_step, split, args.task_name))
-    with open(output_detail_file,'w') as writer:
+    with open(output_detail_file, 'w', encoding='utf-8') as writer:
         for i, seq in enumerate(input_seqs):
             pred = preds[i]
             gt = all_label_ids[i]
@@ -696,7 +649,7 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
     eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
     if args.hiex_idxs:
-        with open(args.hiex_idxs) as f:
+        with open(args.hiex_idxs, encoding='utf-8') as f:
             hiex_idxs = json.load(f)['idxs']
             print('Loaded line numbers for explanation')
     else:
