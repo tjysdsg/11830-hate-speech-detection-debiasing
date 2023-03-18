@@ -298,7 +298,7 @@ def main():
         os.makedirs(args.output_dir)
 
     # save configs
-    f = open(os.path.join(args.output_dir, 'args.json'), 'w')
+    f = open(os.path.join(args.output_dir, 'args.json'), 'w', encoding='utf-8')
     json.dump(args.__dict__, f, indent=4)
     f.close()
 
@@ -567,7 +567,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
     output_eval_file = os.path.join(args.output_dir, "eval_results_%d_%s_%s.txt"
                                     % (global_step, split, args.task_name))
-    with open(output_eval_file, "w") as writer:
+    with open(output_eval_file, "w", encoding='utf-8') as writer:
         logger.info("***** Eval results *****")
         logger.info("Epoch %d" % epoch)
         for key in sorted(result.keys()):
@@ -576,7 +576,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
     output_detail_file = os.path.join(args.output_dir, "eval_details_%d_%s_%s.txt"
                                     % (global_step, split, args.task_name))
-    with open(output_detail_file,'w') as writer:
+    with open(output_detail_file, 'w', encoding='utf-8') as writer:
         for i, seq in enumerate(input_seqs):
             pred = preds[i]
             gt = all_label_ids[i]
@@ -649,7 +649,7 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
     eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
     if args.hiex_idxs:
-        with open(args.hiex_idxs) as f:
+        with open(args.hiex_idxs, encoding='utf-8') as f:
             hiex_idxs = json.load(f)['idxs']
             print('Loaded line numbers for explanation')
     else:
