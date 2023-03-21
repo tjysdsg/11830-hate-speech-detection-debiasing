@@ -59,14 +59,14 @@ class GabProcessor(DataProcessor):
 
         return examples
 
-    def get_train_examples(self, data_dir, label=None):
-        return self._create_examples(data_dir, 'train', label)
+    def get_train_examples(self, data_dir, split='train', label=None):
+        return self._create_examples(data_dir, split, label)
 
-    def get_dev_examples(self, data_dir, label=None):
-        return self._create_examples(data_dir, 'dev', label)
+    def get_dev_examples(self, data_dir, split='dev', label=None):
+        return self._create_examples(data_dir, split, label)
 
-    def get_test_examples(self, data_dir, label=None):
-        return self._create_examples(data_dir, 'test', label)
+    def get_test_examples(self, data_dir, split='test', label=None):
+        return self._create_examples(data_dir, split, label)
 
     def get_example_from_tensor_dict(self, tensor_dict):
         raise NotImplementedError

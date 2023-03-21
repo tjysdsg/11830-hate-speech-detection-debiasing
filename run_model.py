@@ -236,6 +236,14 @@ def main():
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
     parser.add_argument('--server_ip', type=str, default='', help="Can be used for distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="Can be used for distant debugging.")
+
+    # =========================================================================================================
+    parser.add_argument('--train_split',
+                        type=str,
+                        default="train")
+    parser.add_argument('--dev_split',
+                        type=str,
+                        default="dev")
     args = parser.parse_args()
 
     combine_args(configs, args)
@@ -317,7 +325,7 @@ def main():
     train_examples = None
     num_train_optimization_steps = None
     if args.do_train:
-        train_examples = processor.get_train_examples(args.data_dir)
+        train_examples = processor.get_train_examples(args.data_dir, split=args.train_split)
         num_train_optimization_steps = int(
             len(train_examples) / args.train_batch_size / args.gradient_accumulation_steps) * args.num_train_epochs
         if args.local_rank != -1:
@@ -475,7 +483,7 @@ def main():
 def validate(args, model, processor, tokenizer, output_mode, label_list, device, num_labels,
              task_name, tr_loss, global_step, epoch, explainer=None):
     if not args.test:
-        eval_examples = processor.get_dev_examples(args.data_dir)
+        eval_examples = processor.get_dev_examples(args.data_dir, split=args.dev_split)
     else:
         eval_examples = processor.get_test_examples(args.data_dir)
     eval_features = convert_examples_to_features(
@@ -626,7 +634,7 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
     elif args.only_negative: label_filter = 0
 
     if not args.test:
-        eval_examples = processor.get_dev_examples(args.data_dir, label=label_filter)
+        eval_examples = processor.get_dev_examples(args.data_dir, split=args.dev_split, label=label_filter)
     else:
         eval_examples = processor.get_test_examples(args.data_dir, label=label_filter)
     eval_features = convert_examples_to_features(
