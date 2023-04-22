@@ -43,6 +43,9 @@ class ToxigenProcessor(DataProcessor):
         :param label:
         :return:
         """
+        if split == 'dev':  # FIXME: let's pretend dev != test LOL
+            split = 'test'
+
         df = pd.read_csv(os.path.join(data_dir, f'toxigen_annotated_{split}.csv'))
         examples = []
         for i, row in df.iterrows():
@@ -61,8 +64,6 @@ class ToxigenProcessor(DataProcessor):
         return self._create_examples(data_dir, split)
 
     def get_dev_examples(self, data_dir, split='dev'):
-        if split == 'dev':  # FIXME: let's pretend dev != test LOL
-            split = 'test'
         return self._create_examples(data_dir, split)
 
     def get_test_examples(self, data_dir, split='test'):
