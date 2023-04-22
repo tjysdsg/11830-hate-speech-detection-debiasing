@@ -1,7 +1,7 @@
+import pandas as pd
 from .common import *
 from torch.utils.data import DataLoader, Dataset
 import torch
-import random
 
 
 class ToxigenProcessor(DataProcessor):
@@ -12,7 +12,6 @@ class ToxigenProcessor(DataProcessor):
     def __init__(self, configs, tokenizer=None):
         super().__init__()
         self.data_dir = configs.data_dir
-        self.label_groups = configs.label_groups
         self.tokenizer = tokenizer
         self.max_seq_length = configs.max_seq_length
         self.configs = configs
@@ -44,30 +43,29 @@ class ToxigenProcessor(DataProcessor):
         :param label:
         :return:
         """
-        f = open(os.path.join(data_dir, '%s.jsonl' % split))
+        df = pd.read_csv(os.path.join(data_dir, f'toxigen_annotated_{split}.csv'))
         examples = []
-        for i, line in enumerate(f.readlines()):
-            data = json.loads(line)
-            example = InputExample(text_a=data['Text'], guid='%s-%s' % (split, i))
+        for i, row in df.iterrows():
+            example = InputExample(
+                text_a=row['text'], guid=f'{split}-{i}',
+                label=1 if float(row['toxicity_human']) > 3 else 0
+            )
 
-            for j, label_group in enumerate(self.label_groups):
-                tn = 0
-                for key in label_group:
-                    tn += int(data[key])
-                setattr(example, 'label' if j == 0 else 'label_%d' % j, 1 if tn else 0)
             if label is None or example.label == label:
                 examples.append(example)
 
         return examples
 
-    def get_train_examples(self, data_dir, split='train', label=None):
-        return self._create_examples(data_dir, split, label)
+    def get_train_examples(self, data_dir, split='train'):
+        return self._create_examples(data_dir, split)
 
-    def get_dev_examples(self, data_dir, split='dev', label=None):
-        return self._create_examples(data_dir, split, label)
+    def get_dev_examples(self, data_dir, split='dev'):
+        if split == 'dev':  # FIXME: let's pretend dev != test LOL
+            split = 'test'
+        return self._create_examples(data_dir, split)
 
-    def get_test_examples(self, data_dir, split='test', label=None):
-        return self._create_examples(data_dir, split, label)
+    def get_test_examples(self, data_dir, split='test'):
+        return self._create_examples(data_dir, split)
 
     def get_example_from_tensor_dict(self, tensor_dict):
         raise NotImplementedError
@@ -114,7 +112,7 @@ class ToxigenProcessor(DataProcessor):
         :return:
         """
         features = self.get_features(split)
-        dataset = GabDataset(features)
+        dataset = ToxigenDataset(features)
         dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=dotdict_collate)
         return dataloader
 
