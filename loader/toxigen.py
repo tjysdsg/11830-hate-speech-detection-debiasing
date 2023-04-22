@@ -48,7 +48,8 @@ class ToxigenProcessor(DataProcessor):
         for i, row in df.iterrows():
             example = InputExample(
                 text_a=row['text'], guid=f'{split}-{i}',
-                label=1 if float(row['toxicity_human']) > 3 else 0
+                # https://github.com/microsoft/TOXIGEN/blob/main/toxigen/utils.py
+                label=1 if float(row['toxicity_human']) + float(row['toxicity_ai']) > 5.5 else 0
             )
 
             if label is None or example.label == label:
