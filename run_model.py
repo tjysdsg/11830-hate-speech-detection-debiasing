@@ -49,13 +49,15 @@ from bert.modeling import BertForSequenceClassification, BertConfig
 from bert.tokenization import BertTokenizer
 from bert.optimization import BertAdam, WarmupLinearSchedule
 
-from loader import GabProcessor, WSProcessor, NytProcessor, ToxigenProcessor, convert_examples_to_features
+from loader import (GabProcessor, WSProcessor, NytProcessor, ToxigenProcessor, FountaProcessor,
+                    convert_examples_to_features)
 from utils.config import configs, combine_args
 
 # for hierarchical explanation algorithms
 from hiex import SamplingAndOcclusionExplain
 
 logger = logging.getLogger(__name__)
+
 
 def simple_accuracy(preds, labels):
     return (preds == labels).mean()
@@ -66,7 +68,7 @@ def acc_and_f1(preds, labels, pred_probs):
     f1 = f1_score(y_true=labels, y_pred=preds)
     p, r = precision_score(y_true=labels, y_pred=preds), recall_score(y_true=labels, y_pred=preds)
     try:
-        roc = roc_auc_score(y_true=labels, y_score=pred_probs[:,1])
+        roc = roc_auc_score(y_true=labels, y_score=pred_probs[:, 1])
     except ValueError:
         roc = 0.
     return {
@@ -93,7 +95,7 @@ def compute_metrics(task_name, preds, labels, pred_probs):
     return acc_and_f1(preds, labels, pred_probs)
 
 
-def main():
+def get_parser():
     parser = argparse.ArgumentParser()
 
     ## Required parameters
@@ -244,8 +246,11 @@ def main():
     parser.add_argument('--dev_split',
                         type=str,
                         default="dev")
-    args = parser.parse_args()
+    return parser
 
+
+def main():
+    args = get_parser().parse_args()
     combine_args(configs, args)
     args = configs
 
@@ -261,6 +266,7 @@ def main():
         'ws': WSProcessor,
         'nyt': NytProcessor,
         'tox': ToxigenProcessor,
+        'founta': FountaProcessor,
     }
 
     output_modes = {
@@ -268,6 +274,7 @@ def main():
         'ws': 'classification',
         'nyt': 'classification',
         'tox': 'classification',
+        'founta': 'classification',
     }
 
     if args.local_rank == -1 or args.no_cuda:
@@ -302,7 +309,7 @@ def main():
     if not args.do_train and not args.do_eval:
         raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
-    #if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train:
+    # if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and args.do_train:
     #    raise ValueError("Output directory ({}) already exists and is not empty.".format(args.output_dir))
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -441,9 +448,10 @@ def main():
                 # NOTE: backward performed inside this function to prevent OOM
 
                 if args.reg_explanations:
-                    reg_loss, reg_cnt = explainer.compute_explanation_loss(input_ids, input_mask, segment_ids, label_ids,
-                                                                  do_backprop=True)
-                    tr_reg_loss += reg_loss # float
+                    reg_loss, reg_cnt = explainer.compute_explanation_loss(input_ids, input_mask, segment_ids,
+                                                                           label_ids,
+                                                                           do_backprop=True)
+                    tr_reg_loss += reg_loss  # float
                     tr_reg_cnt += reg_cnt
 
                 nb_tr_examples += input_ids.size(0)
@@ -538,8 +546,8 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
         if args.reg_explanations:
             with torch.no_grad():
                 reg_loss, reg_cnt = explainer.compute_explanation_loss(input_ids, input_mask, segment_ids, label_ids,
-                                                              do_backprop=False)
-            #eval_loss += reg_loss.item()
+                                                                       do_backprop=False)
+            # eval_loss += reg_loss.item()
             eval_loss_reg += reg_loss
             eval_reg_cnt += reg_cnt
 
@@ -551,11 +559,10 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
         for b in range(input_ids.size(0)):
             i = 0
-            while i < input_ids.size(1) and input_ids[b,i].item() != 0:
+            while i < input_ids.size(1) and input_ids[b, i].item() != 0:
                 i += 1
-            token_list = tokenizer.convert_ids_to_tokens(input_ids[b,:i].cpu().numpy().tolist())
+            token_list = tokenizer.convert_ids_to_tokens(input_ids[b, :i].cpu().numpy().tolist())
             input_seqs.append(' '.join(token_list))
-
 
     eval_loss = eval_loss / nb_eval_steps
     eval_loss_reg = eval_loss_reg / (eval_reg_cnt + 1e-10)
@@ -585,7 +592,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
             writer.write("%s = %s\n" % (key, str(result[key])))
 
     output_detail_file = os.path.join(args.output_dir, "eval_details_%d_%s_%s.txt"
-                                    % (global_step, split, args.task_name))
+                                      % (global_step, split, args.task_name))
     with open(output_detail_file, 'w', encoding='utf-8') as writer:
         for i, seq in enumerate(input_seqs):
             pred = preds[i]
@@ -625,15 +632,17 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
                                                 dev_dataloader=dev_lm_dataloader,
                                                 lm_dir=args.lm_dir,
                                                 output_path=os.path.join(configs.output_dir, configs.output_filename),
-                                               )
+                                                )
     else:
         raise ValueError
 
     label_filter = None
     if args.only_positive and args.only_negative:
         label_filter = None
-    elif args.only_positive: label_filter = 1
-    elif args.only_negative: label_filter = 0
+    elif args.only_positive:
+        label_filter = 1
+    elif args.only_negative:
+        label_filter = 0
 
     if not args.test:
         eval_examples = processor.get_dev_examples(args.data_dir, split=args.dev_split, label=label_filter)
@@ -681,6 +690,7 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
     if hasattr(explainer, 'dump'):
         explainer.dump()
 
+
 def save_model(args, model, tokenizer, num_labels):
     # Save a trained model, configuration and tokenizer
     model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
@@ -692,6 +702,7 @@ def save_model(args, model, tokenizer, num_labels):
     torch.save(model_to_save.state_dict(), output_model_file)
     model_to_save.config.to_json_file(output_config_file)
     tokenizer.save_vocabulary(args.output_dir)
+
 
 if __name__ == "__main__":
     main()
