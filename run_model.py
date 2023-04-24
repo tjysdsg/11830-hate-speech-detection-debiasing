@@ -248,7 +248,7 @@ def main():
         'ws': WSProcessor,
         'nyt': NytProcessor,
         'tox': ToxigenProcessor,
-        'founta': FountaProcessor,
+        'fou': FountaProcessor,
     }
 
     output_modes = {
@@ -256,7 +256,7 @@ def main():
         'ws': 'classification',
         'nyt': 'classification',
         'tox': 'classification',
-        'founta': 'classification',
+        'fou': 'classification',
     }
 
     if args.local_rank == -1 or args.no_cuda:
