@@ -49,8 +49,9 @@ class ToxigenProcessor(DataProcessor):
         df = pd.read_csv(os.path.join(data_dir, f'toxigen_annotated_{split}.csv'))
         examples = []
         for i, row in df.iterrows():
+            text = row['text'].lstrip("b'").rstrip("'")
             example = InputExample(
-                text_a=row['text'], guid=f'{split}-{i}',
+                text_a=text, guid=f'{split}-{i}',
                 # https://github.com/microsoft/TOXIGEN/blob/main/toxigen/utils.py
                 label=1 if float(row['toxicity_human']) + float(row['toxicity_ai']) > 5.5 else 0
             )
