@@ -1,6 +1,14 @@
 import os
 import torch
 from bert.file_utils import WEIGHTS_NAME, CONFIG_NAME
+from transformers import DistilBertForSequenceClassification
+
+
+def forward_model(model, input_ids, input_mask, segment_ids):
+    if isinstance(model, DistilBertForSequenceClassification):
+        return model(input_ids, attention_mask=input_mask, labels=None).logits
+    else:
+        return model(input_ids, attention_mask=input_mask, token_type_ids=segment_ids, labels=None).logits
 
 
 def save_model(args, model, tokenizer):

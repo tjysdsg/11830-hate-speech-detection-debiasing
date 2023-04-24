@@ -31,7 +31,7 @@ from transformers.optimization import AdamW
 from loader import (GabProcessor, WSProcessor, NytProcessor, ToxigenProcessor, FountaProcessor,
                     convert_examples_to_features)
 from utils.config import configs, combine_args
-from train_utils import save_model
+from train_utils import save_model, forward_model
 
 # for hierarchical explanation algorithms
 from hiex import SamplingAndOcclusionExplain
@@ -410,10 +410,7 @@ def main():
                 input_ids, input_mask, segment_ids, label_ids = batch
 
                 # define a new function to compute loss values for both output_modes
-                if isinstance(model, DistilBertForSequenceClassification):
-                    logits = model(input_ids, attention_mask=input_mask, labels=None).logits
-                else:
-                    logits = model(input_ids, attention_mask=input_mask, token_type_ids=segment_ids, labels=None).logits
+                logits = forward_model(model, input_ids, input_mask, segment_ids)
 
                 if output_mode == "classification":
                     loss_fct = CrossEntropyLoss(class_weight)
@@ -517,10 +514,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
         label_ids = label_ids.to(device)
 
         with torch.no_grad():
-            if isinstance(model, DistilBertForSequenceClassification):
-                logits = model(input_ids, attention_mask=input_mask, labels=None).logits
-            else:
-                logits = model(input_ids, attention_mask=input_mask, token_type_ids=segment_ids, labels=None).logits
+            logits = forward_model(model, input_ids, input_mask, segment_ids)
 
         # create eval loss and other metric required by the task
         if output_mode == "classification":

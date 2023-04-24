@@ -2,9 +2,8 @@ import torch
 from .agglomeration import *
 import numpy as np
 import copy
-import pickle
+from train_utils import forward_model
 from skimage import measure
-from torch.nn import functional as F
 
 
 class DotDict:
@@ -304,7 +303,7 @@ class _SamplingAndOcclusionAlgo(_SamplingAndOcclusionBaseAlgo):
                 filled_inp = copy.copy(inp)
             else:
                 fw_sample_seq, bw_sample_seq = fw_sample_outputs[:, sample_i].cpu().numpy(), \
-                                               bw_sample_outputs[:, sample_i].cpu().numpy()
+                    bw_sample_outputs[:, sample_i].cpu().numpy()
                 filled_inp = copy.copy(inp)
 
                 if self.mask_outside_nb:
@@ -362,8 +361,8 @@ class _SamplingAndOcclusionAlgo(_SamplingAndOcclusionBaseAlgo):
         inp_enb_mask = inp_enb_mask.expand(inp_enb.size(0), -1)
         segment_ids = segment_ids.expand(inp_enb.size(0), -1)
 
-        logits_enb = self.model(inp_enb, segment_ids[:, :inp_enb.size(1)], inp_enb_mask)
-        logits_ex = self.model(inp_ex, segment_ids[:, :inp_ex.size(1)], inp_ex_mask)
+        logits_enb = forward_model(self.model, inp_enb, inp_enb_mask, segment_ids[:, :inp_enb.size(1)])
+        logits_ex = forward_model(self.model, inp_ex, inp_ex_mask, segment_ids[:, :inp_ex.size(1)])
 
         if type(logits_enb) is tuple:
             logits_enb = logits_enb[0]
@@ -415,10 +414,11 @@ class _SamplingAndOcclusionAlgo(_SamplingAndOcclusionBaseAlgo):
 
         if self.gpu >= 0:
             inp_enb, inp_mask_enb, inp_ex, inp_mask_ex = inp_enb.to(self.gpu), inp_mask_enb.to(self.gpu), \
-                                                         inp_ex.to(self.gpu), inp_mask_ex.to(self.gpu)
+                inp_ex.to(self.gpu), inp_mask_ex.to(self.gpu)
             segment_ids = segment_ids.to(self.gpu)
-        logits_enb = self.model(inp_enb, segment_ids[:, :inp_enb.size(1)], inp_mask_enb)
-        logits_ex = self.model(inp_ex, segment_ids[:, :inp_ex.size(1)], inp_mask_ex)
+        logits_enb = forward_model(self.model, inp_enb, inp_mask_enb, segment_ids[:, :inp_enb.size(1)])
+        logits_ex = forward_model(self.model, inp_ex, inp_mask_ex, segment_ids[:, :inp_ex.size(1)])
+
         contrib_logits = logits_enb - logits_ex  # [1 * C]
 
         contrib_score = contrib_logits[0, 1] - contrib_logits[0, 0]
@@ -426,10 +426,10 @@ class _SamplingAndOcclusionAlgo(_SamplingAndOcclusionBaseAlgo):
             return contrib_score.item()
         else:
             return contrib_score
-    
+
     def do_hierarchical_explanation(self, input_ids, input_mask, segment_ids, label_ids):
-        logits_pred = self.model(input_ids, segment_ids, input_mask)
-        logits_pred = logits_pred[:,1] - logits_pred[:,0]
+        logits_pred = forward_model(self.model, input_ids, input_mask, segment_ids)
+        logits_pred = logits_pred[:, 1] - logits_pred[:, 0]
 
         inp = input_ids.view(-1).cpu().numpy()
         lists = self.agglomerate((input_ids, input_mask, segment_ids), percentile_include=90, method='cd',
@@ -446,5 +446,3 @@ class _SamplingAndOcclusionAlgo(_SamplingAndOcclusionBaseAlgo):
             'pred': logits_pred.item()
         }
         return tab
-
-
