@@ -65,6 +65,8 @@ class FountaProcessor(DataProcessor):
         return [0, 1]
 
     def get_features(self, split):
+        if split == 'dev':
+            split = 'valid'
         neutral_word_ids = []
         if self.configs.remove_nw:
             neutral_word_ids = self._get_neutral_word_ids()

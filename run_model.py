@@ -25,8 +25,7 @@ from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
 from bert.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
-from bert.modeling import BertForSequenceClassification, BertConfig
-from bert.tokenization import BertTokenizer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, DistilBertForSequenceClassification
 from bert.optimization import BertAdam, WarmupLinearSchedule
 from loader import (GabProcessor, WSProcessor, NytProcessor, ToxigenProcessor, FountaProcessor,
                     convert_examples_to_features)
@@ -306,7 +305,7 @@ def main():
     if task_name not in processors:
         raise ValueError(f"Task not found: {task_name}")
 
-    tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+    tokenizer = AutoTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
     processor = processors[task_name](configs, tokenizer=tokenizer)
     output_mode = output_modes[task_name]
 
@@ -326,11 +325,13 @@ def main():
     cache_dir = args.cache_dir if args.cache_dir else os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE),
                                                                    'distributed_{}'.format(args.local_rank))
     if args.do_train:
-        model = BertForSequenceClassification.from_pretrained(args.bert_model,
-                                                              cache_dir=cache_dir,
-                                                              num_labels=num_labels)
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.bert_model,
+            cache_dir=cache_dir,
+            num_labels=num_labels
+        )
     else:
-        model = BertForSequenceClassification.from_pretrained(args.output_dir, num_labels=num_labels)
+        model = AutoModelForSequenceClassification.from_pretrained(args.output_dir, num_labels=num_labels)
     model.to(device)
 
     if args.local_rank != -1:
@@ -409,7 +410,10 @@ def main():
                 input_ids, input_mask, segment_ids, label_ids = batch
 
                 # define a new function to compute loss values for both output_modes
-                logits = model(input_ids, segment_ids, input_mask, labels=None)
+                if isinstance(model, DistilBertForSequenceClassification):
+                    logits = model(input_ids, input_mask, labels=None).logits
+                else:
+                    logits = model(input_ids, segment_ids, input_mask, labels=None).logits
 
                 if output_mode == "classification":
                     loss_fct = CrossEntropyLoss(class_weight)
@@ -512,7 +516,10 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
         label_ids = label_ids.to(device)
 
         with torch.no_grad():
-            logits = model(input_ids, segment_ids, input_mask, labels=None)
+            if isinstance(model, DistilBertForSequenceClassification):
+                logits = model(input_ids, input_mask, labels=None).logits
+            else:
+                logits = model(input_ids, segment_ids, input_mask, labels=None).logits
 
         # create eval loss and other metric required by the task
         if output_mode == "classification":
