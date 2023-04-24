@@ -25,8 +25,9 @@ from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
 from bert.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, DistilBertForSequenceClassification
-from bert.optimization import BertAdam, WarmupLinearSchedule
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, DistilBertForSequenceClassification, \
+    get_linear_schedule_with_warmup
+from transformers.optimization import AdamW
 from loader import (GabProcessor, WSProcessor, NytProcessor, ToxigenProcessor, FountaProcessor,
                     convert_examples_to_features)
 from utils.config import configs, combine_args
@@ -341,17 +342,16 @@ def main():
     #     model = torch.nn.DataParallel(model)
 
     # Prepare optimizer
-    param_optimizer = list(model.named_parameters())
-    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-    optimizer_grouped_parameters = [
-        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
-        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-    ]
     if args.do_train:
-        optimizer = BertAdam(optimizer_grouped_parameters,
-                             lr=args.learning_rate,
-                             warmup=args.warmup_proportion,
-                             t_total=num_train_optimization_steps)
+        optimizer = AdamW(
+            model.parameters(),
+            lr=args.learning_rate,
+        )
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            args.warmup_proportion,
+            num_train_optimization_steps,
+        )
 
     global_step = 0
     nb_tr_steps = 0
@@ -411,9 +411,9 @@ def main():
 
                 # define a new function to compute loss values for both output_modes
                 if isinstance(model, DistilBertForSequenceClassification):
-                    logits = model(input_ids, input_mask, labels=None).logits
+                    logits = model(input_ids, attention_mask=input_mask, labels=None).logits
                 else:
-                    logits = model(input_ids, segment_ids, input_mask, labels=None).logits
+                    logits = model(input_ids, attention_mask=input_mask, token_type_ids=segment_ids, labels=None).logits
 
                 if output_mode == "classification":
                     loss_fct = CrossEntropyLoss(class_weight)
@@ -444,6 +444,7 @@ def main():
                 if (step + 1) % args.gradient_accumulation_steps == 0:
                     optimizer.step()
                     optimizer.zero_grad()
+                    scheduler.step()
                     global_step += 1
 
                 if global_step % 200 == 0:
@@ -517,9 +518,9 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
         with torch.no_grad():
             if isinstance(model, DistilBertForSequenceClassification):
-                logits = model(input_ids, input_mask, labels=None).logits
+                logits = model(input_ids, attention_mask=input_mask, labels=None).logits
             else:
-                logits = model(input_ids, segment_ids, input_mask, labels=None).logits
+                logits = model(input_ids, attention_mask=input_mask, token_type_ids=segment_ids, labels=None).logits
 
         # create eval loss and other metric required by the task
         if output_mode == "classification":
