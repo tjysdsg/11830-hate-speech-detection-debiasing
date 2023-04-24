@@ -1,27 +1,10 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """
 Running BERT finetuning & evaluation on hate speech classification datasets.
 
 Integrated with SOC explanation regularization
-
 """
 
 from __future__ import absolute_import, division, print_function
-
 import argparse
 import csv
 import logging
@@ -29,11 +12,9 @@ import os
 import random
 import sys
 import json
-
 import numpy as np
 import torch
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
-                              TensorDataset)
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
 from torch.utils.data.distributed import DistributedSampler
 from torch import nn
 from torch.nn import functional as F
@@ -43,15 +24,14 @@ from torch.nn import CrossEntropyLoss, MSELoss
 from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
-
-from bert.file_utils import PYTORCH_PRETRAINED_BERT_CACHE, WEIGHTS_NAME, CONFIG_NAME
+from bert.file_utils import PYTORCH_PRETRAINED_BERT_CACHE
 from bert.modeling import BertForSequenceClassification, BertConfig
 from bert.tokenization import BertTokenizer
 from bert.optimization import BertAdam, WarmupLinearSchedule
-
 from loader import (GabProcessor, WSProcessor, NytProcessor, ToxigenProcessor, FountaProcessor,
                     convert_examples_to_features)
 from utils.config import configs, combine_args
+from train_utils import save_model
 
 # for hierarchical explanation algorithms
 from hiex import SamplingAndOcclusionExplain
@@ -98,7 +78,7 @@ def compute_metrics(task_name, preds, labels, pred_probs):
 def get_parser():
     parser = argparse.ArgumentParser()
 
-    ## Required parameters
+    # Required parameters
     parser.add_argument("--data_dir",
                         default=None,
                         type=str,
@@ -246,6 +226,9 @@ def get_parser():
     parser.add_argument('--dev_split',
                         type=str,
                         default="dev")
+
+    # Directory containing checkpoint to resume training/testing from
+    parser.add_argument('--resume', type=str, default=None)
     return parser
 
 
@@ -320,9 +303,8 @@ def main():
     f.close()
 
     task_name = args.task_name.lower()
-
     if task_name not in processors:
-        raise ValueError("Task not found: %s" % (task_name))
+        raise ValueError(f"Task not found: {task_name}")
 
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
     processor = processors[task_name](configs, tokenizer=tokenizer)
@@ -382,14 +364,13 @@ def main():
     if args.reg_explanations:
         train_lm_dataloder = processor.get_dataloader('train', configs.train_batch_size)
         dev_lm_dataloader = processor.get_dataloader('dev', configs.train_batch_size)
-        explainer = SamplingAndOcclusionExplain(model, configs, tokenizer, device=device, vocab=tokenizer.vocab,
-                                                train_dataloader=train_lm_dataloder,
-                                                dev_dataloader=dev_lm_dataloader,
-                                                lm_dir=args.lm_dir,
-                                                output_path=os.path.join(configs.output_dir,
-                                                                         configs.output_filename),
-
-                                                )
+        explainer = SamplingAndOcclusionExplain(
+            model, configs, tokenizer, device=device, vocab=tokenizer.vocab,
+            train_dataloader=train_lm_dataloder,
+            dev_dataloader=dev_lm_dataloader,
+            lm_dir=args.lm_dir,
+            output_path=os.path.join(configs.output_dir, configs.output_filename),
+        )
     else:
         explainer = None
 
@@ -469,7 +450,7 @@ def main():
                     if val_f1 > val_best_f1:
                         val_best_f1 = val_f1
                         if args.local_rank == -1 or torch.distributed.get_rank() == 0:
-                            save_model(args, model, tokenizer, num_labels)
+                            save_model(args, model, tokenizer)
                     else:
                         # halve the learning rate
                         for param_group in optimizer.param_groups:
@@ -582,8 +563,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
     split = 'dev' if not args.test else 'test'
 
-    output_eval_file = os.path.join(args.output_dir, "eval_results_%d_%s_%s.txt"
-                                    % (global_step, split, args.task_name))
+    output_eval_file = os.path.join(args.output_dir, f"eval_results_{global_step:d}_{split}_{args.task_name}.txt")
     with open(output_eval_file, "w", encoding='utf-8') as writer:
         logger.info("***** Eval results *****")
         logger.info("Epoch %d" % epoch)
@@ -591,8 +571,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
             logger.info("  %s = %s", key, str(result[key]))
             writer.write("%s = %s\n" % (key, str(result[key])))
 
-    output_detail_file = os.path.join(args.output_dir, "eval_details_%d_%s_%s.txt"
-                                      % (global_step, split, args.task_name))
+    output_detail_file = os.path.join(args.output_dir, f"eval_details_{global_step:d}_{split}_{args.task_name}.txt")
     with open(output_detail_file, 'w', encoding='utf-8') as writer:
         for i, seq in enumerate(input_seqs):
             pred = preds[i]
@@ -627,12 +606,13 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
             train_lm_dataloder = None
             dev_lm_dataloader = None
 
-        explainer = SamplingAndOcclusionExplain(model, configs, tokenizer, device=device, vocab=tokenizer.vocab,
-                                                train_dataloader=train_lm_dataloder,
-                                                dev_dataloader=dev_lm_dataloader,
-                                                lm_dir=args.lm_dir,
-                                                output_path=os.path.join(configs.output_dir, configs.output_filename),
-                                                )
+        explainer = SamplingAndOcclusionExplain(
+            model, configs, tokenizer, device=device, vocab=tokenizer.vocab,
+            train_dataloader=train_lm_dataloder,
+            dev_dataloader=dev_lm_dataloader,
+            lm_dir=args.lm_dir,
+            output_path=os.path.join(configs.output_dir, configs.output_filename),
+        )
     else:
         raise ValueError
 
@@ -689,19 +669,6 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
             explainer.hierarchical_explanation_bert(input_ids, input_mask, segment_ids, label_ids)
     if hasattr(explainer, 'dump'):
         explainer.dump()
-
-
-def save_model(args, model, tokenizer, num_labels):
-    # Save a trained model, configuration and tokenizer
-    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
-
-    # If we save using the predefined names, we can load using `from_pretrained`
-    output_model_file = os.path.join(args.output_dir, WEIGHTS_NAME)
-    output_config_file = os.path.join(args.output_dir, CONFIG_NAME)
-
-    torch.save(model_to_save.state_dict(), output_model_file)
-    model_to_save.config.to_json_file(output_config_file)
-    tokenizer.save_vocabulary(args.output_dir)
 
 
 if __name__ == "__main__":
