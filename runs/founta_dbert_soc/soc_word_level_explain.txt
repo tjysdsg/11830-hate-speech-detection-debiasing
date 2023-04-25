@@ -1,1 +1,2 @@
 this -0.026830	 statement 0.011840	 indicates -0.303280	 that -0.041438	 black 0.049402	 men 0.039149	 are -0.029658	 seen -0.000291	 as 0.041707	 savage 0.698656	 ##s 0.075773	 or 0.058645	 animals 0.196476	 compared 0.007346	 to -0.067965	 white -0.000202	 men 0.018483	
+we 0.002888	 do 0.131728	 not 0.239911	 need -0.086694	 to -0.027814	 mention -0.064791	 trans -0.007799	 people 0.020832	 in 0.014936	 an 0.067046	 article -0.007380	 about -0.088719	 lgbt 0.150483	 ##q 0.019273	 + -0.063190	 issues -0.137781	
