@@ -20,6 +20,11 @@ Using the original scripts:
 - `scripts/gab_vanilla.sh` trains a model without debiasing
 - `scripts/gab_soc.sh` trains a model with SOC debiasing
 
+# Measure biases towards each identity group
+
+- `scripts/calc_target_group_fpr.sh`
+
 # Get word weights of Toxigen samples using SOC explanation for all experiments
 
 - `scripts/explain_soc.sh`
+
