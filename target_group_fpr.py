@@ -14,10 +14,39 @@ def main():
     args = get_args()
 
     ref = pd.read_csv(os.path.join('data', 'toxigen_annotated_test.csv'))
-    target_groups = list(ref['target_group'].unique())
-    # print(f'Target groups:')
-    # print("\n".join(target_groups))
-    # print("\n")
+    target_groups = [
+        "black/african-american",
+        "mexican",
+        "women",
+        "native american/indigenous",
+        "physical disabilities",
+        "latino/hispanic",
+        "chinese",
+        "middle eastern",
+        "asian",
+        "jewish",
+        "muslim",
+        "mental disabilities",
+        "lgbtq+",
+    ]
+    target_group_mapping = {
+        "black/african-american folks": "black/african-american",
+        "black folks / african-americans": "black/african-american",
+        "mexican folks": "mexican",
+        "women": "women",
+        "native american/indigenous folks": "native american/indigenous",
+        "native american folks": "native american/indigenous",
+        "folks with physical disabilities": "physical disabilities",
+        "latino/hispanic folks": "latino/hispanic",
+        "chinese folks": "chinese",
+        "middle eastern folks": "middle eastern",
+        "asian folks": "asian",
+        "jewish folks": "jewish",
+        "muslim folks": "muslim",
+        "folks with mental disabilities": "mental disabilities",
+        "lgbtq+ folks": "lgbtq+",
+    }
+    ref['target_group'] = ref['target_group'].map(target_group_mapping)
 
     ref['label'] = ((ref.toxicity_ai + ref.toxicity_human) > 5.5).astype(int)
     labels = list(ref['label'])

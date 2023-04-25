@@ -1,16 +1,14 @@
 ,identity,fp,tn,fpr
-0,black/african-american folks,9,34,0.20930232558139536
-1,black folks / african-americans,2,10,0.16666666666666666
-2,mexican folks,5,21,0.19230769230769232
-3,women,1,25,0.038461538461538464
-4,native american/indigenous folks,0,13,0.0
-5,native american folks,1,19,0.05
-6,folks with physical disabilities,3,50,0.05660377358490566
-7,latino/hispanic folks,15,27,0.35714285714285715
-8,chinese folks,10,40,0.2
-9,middle eastern folks,4,33,0.10810810810810811
-10,asian folks,2,36,0.05263157894736842
-11,jewish folks,9,44,0.16981132075471697
-12,muslim folks,8,40,0.16666666666666666
-13,folks with mental disabilities,5,31,0.1388888888888889
-14,lgbtq+ folks,14,23,0.3783783783783784
+0,black/african-american,11,44,0.2
+1,mexican,5,21,0.19230769230769232
+2,women,1,25,0.038461538461538464
+3,native american/indigenous,1,32,0.030303030303030304
+4,physical disabilities,3,50,0.05660377358490566
+5,latino/hispanic,15,27,0.35714285714285715
+6,chinese,10,40,0.2
+7,middle eastern,4,33,0.10810810810810811
+8,asian,2,36,0.05263157894736842
+9,jewish,9,44,0.16981132075471697
+10,muslim,8,40,0.16666666666666666
+11,mental disabilities,5,31,0.1388888888888889
+12,lgbtq+,14,23,0.3783783783783784
