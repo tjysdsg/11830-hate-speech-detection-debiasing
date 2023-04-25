@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-for d in founta_dbert founta_dbert_soc founta_embed_dbert founta_embed_dbert_soc founta_embed_dbert_soc_finetune_tox; do
+for d in founta_dbert founta_dbert_soc founta_embed_dbert founta_embed_dbert_soc; do
   python run_model.py \
     --do_eval --explain \
     --do_lower_case --data_dir data \
@@ -15,4 +15,6 @@ for d in founta_dbert founta_dbert_soc founta_embed_dbert founta_embed_dbert_soc
     --hiex_idxs data/toxigen_soc_line_numbers.json \
     --output_dir runs/${d} \
     --output_filename soc_word_level_explain.txt
+
+  python visualize.py runs/${d}/soc_word_level_explain.txt figs/${d}
 done

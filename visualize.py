@@ -107,7 +107,7 @@ def visualize_tabs(tab_file, model_name, method_name):
             plt.close()
 
 
-def visualize_sequences(txt_file, model_name, method_name):
+def visualize_sequences(txt_file: str, output_dir: str):
     f = open(txt_file)
     for i, line in enumerate(f.readlines()):
         score_array, sent_words = [], []
@@ -122,16 +122,24 @@ def visualize_sequences(txt_file, model_name, method_name):
 
         if score_array.shape[1] <= 400:
             im = plot_score_array(None, score_array, sent_words)
-            dir = 'figs/{}_{}'.format(model_name, method_name)
-            if not os.path.isdir(dir): os.mkdir(dir)
-            plt.savefig('figs/{}_{}/fig_{}.png'.format(model_name, method_name, i), bbox_inches='tight')
+            os.makedirs(output_dir, exist_ok=True)
+            plt.savefig(os.path.join(output_dir, f'fig_{i}.png'), bbox_inches='tight')
             plt.close()
 
 
-if __name__ == '__main__':
-    if not os.path.isdir('figs/'): os.mkdir('figs/')
+def get_args():
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument('input', type=str, help='Path to the SOC word weight file')
+    parser.add_argument('out', type=str, help='Directory to store the output figure')
+    return parser.parse_args()
 
-    tab_file_dir = 'runs/majority_gab_es_vanilla_bal_seed_0/soc.nb10.h10.3.pkl'
-    visualize_tabs(tab_file_dir, 'bert', 'soc_vanilla_bal_3')
-    tab_file_dir = 'runs/majority_gab_es_reg_nb5_h10_is_bal_seed_3/soc.nb10.h10.3.pkl'
-    visualize_tabs(tab_file_dir, 'bert', 'soc_reg_bal_3')
+
+def main():
+    args = get_args()
+
+    visualize_sequences(args.input, args.out)
+
+
+if __name__ == '__main__':
+    main()
