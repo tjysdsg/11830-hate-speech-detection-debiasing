@@ -20,6 +20,6 @@ Using the original scripts:
 - `scripts/gab_vanilla.sh` trains a model without debiasing
 - `scripts/gab_soc.sh` trains a model with SOC debiasing
 
-# (Jiyang) Training on Toxigen data
+# Get word weights of Toxigen samples using SOC explanation for all experiments
 
-- `scripts/tox_vanilla.sh` trains a model without debiasing
+- `scripts/explain_soc.sh`

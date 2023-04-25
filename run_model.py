@@ -615,6 +615,7 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
             lm_dir=args.lm_dir,
             output_path=os.path.join(configs.output_dir, configs.output_filename),
         )
+        print('SOC explanation will be saved to:', os.path.join(configs.output_dir, configs.output_filename))
     else:
         raise ValueError
 

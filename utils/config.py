@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Config:
     def __init__(self):
         """
@@ -17,7 +18,7 @@ class Config:
         # create a classifier head for each item in the list with disjunction of each label
         # for example, [('hd','cv')] means the ground truth label for classification is 1 when hd OR cv is 1.
         # multi-head classifier not implemented. So len(self.label_groups) == 1 should hold.
-        self.label_groups = [('hd','cv')]
+        self.label_groups = [('hd', 'cv')]
         self.do_lower_case = True
         self.bert_model = 'bert-base-uncased'
 
@@ -62,6 +63,9 @@ class Config:
         # whether do neutral word removal
         self.remove_nw = False
 
+        self.algo = None
+        self.hiex_idxs = None
+
     def update(self, other):
         combine_args(self, other)
 
@@ -71,8 +75,8 @@ configs = Config()
 
 def combine_args(args, other):
     # combine and update configs, skip if args.<k> is None
-    for k,v in other.__dict__.items():
+    for k, v in other.__dict__.items():
         if getattr(other, k) is not None:
             if hasattr(args, k) and getattr(args, k) != v:
-                logger.info('Overriding {} from {} to {})'.format(k, getattr(args,k), v))
-            setattr(args,k,v)
+                logger.info('Overriding {} from {} to {})'.format(k, getattr(args, k), v))
+            setattr(args, k, v)
