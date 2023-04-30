@@ -226,6 +226,9 @@ def get_parser():
     parser.add_argument('--dev_split',
                         type=str,
                         default="dev")
+    parser.add_argument('--freeze',
+                        action='store_true',
+                        help="Freeze the transformer layers and only train the classifier")
 
     # Directory containing checkpoint to resume training/testing from
     parser.add_argument('--resume', type=str, default=None)
@@ -376,6 +379,16 @@ def main():
         explainer = None
 
     if args.do_train:
+        if args.freeze:
+            print("Freezing BERT layers")
+            active_layers = [5]
+            # FIXME: bert
+            for name, param in model.distilbert.named_parameters():
+                # Don't freeze all, otherwise classification performance is too bad
+                for layer in active_layers:
+                    if f'transformer.layer.{layer}' not in name:
+                        param.requires_grad = False
+
         epoch = 0
         train_features = convert_examples_to_features(
             train_examples, label_list, args.max_seq_length, tokenizer, output_mode, configs)
