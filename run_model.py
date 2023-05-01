@@ -227,8 +227,7 @@ def get_parser():
                         action='store_true',
                         help="Freeze the transformer layers and only train the classifier")
 
-    # Directory containing checkpoint to resume training/testing from
-    parser.add_argument('--resume', type=str, default=None)
+    parser.add_argument('--valid_step', type=int, default=1000)
     return parser
 
 
@@ -463,7 +462,7 @@ def main():
                     stats_loss = 0.0
                     stats_loss_n = 0
 
-                if global_step % 1000 == 0:
+                if global_step % args.valid_step == 0:
                     val_result = validate(
                         args, model, processor, tokenizer, output_mode, label_list, device,
                         num_labels, task_name, tr_loss, global_step, epoch, explainer

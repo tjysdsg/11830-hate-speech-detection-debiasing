@@ -3,3 +3,4 @@ runs/founta_dbert/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
 runs/founta_dbert_soc/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
 runs/founta_embed_dbert/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
 runs/founta_embed_dbert_soc/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
+runs/tox_dbert/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
