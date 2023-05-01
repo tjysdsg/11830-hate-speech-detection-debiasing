@@ -1,0 +1,27 @@
+word
+lesbians?
+islam[a-z]*
+gays?
+bisexuals?
+transgender[a-z]*
+trans[+\*]?
+queers?
+lgbt[a-z\+\*]*
+lgbtq[a-z\+\*]*
+homosexual\w*
+heterosexual\w*
+wom[ae]n
+females*
+girls?
+non-?binar\w*
+africans?
+african americans?
+blacks?
+hispanic\w*
+latin[oax][a-z]*
+mexicans?
+indians?
+middle eastern[a-z]*
+muslims?
+arabs?
+jew\w*

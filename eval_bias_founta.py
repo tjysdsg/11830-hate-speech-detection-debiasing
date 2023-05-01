@@ -83,9 +83,13 @@ def main():
 
     # load biased word list
     df_word = pd.read_csv(args.word_list)
-    noi_wordlist = df_word[df_word.categorization == 'harmless-minority'].word.tolist()
-    oi_wordlist = df_word[df_word.categorization == 'offensive-minority-reference'].word.tolist()
-    oni_wordlist = df_word[df_word.categorization == 'offensive-not-minority'].word.tolist()
+    noi_wordlist = df_word[df_word.categorization == 'harmless-minority'].word
+    oi_wordlist = df_word[df_word.categorization == 'offensive-minority-reference'].word
+    oni_wordlist = df_word[df_word.categorization == 'offensive-not-minority'].word
+
+    # noi_wordlist.to_csv('noi_wordlist.csv', index=False)
+    # oi_wordlist.to_csv('oi_wordlist.csv', index=False)
+    # oni_wordlist.to_csv('oni_wordlist.csv', index=False)
 
     noi_regex = re.compile(r"\b" + r"\b|\b".join(noi_wordlist) + "\b", re.IGNORECASE)
     oi_regex = re.compile(r"\b" + r"\b|\b".join(oi_wordlist) + "\b", re.IGNORECASE)
@@ -95,9 +99,9 @@ def main():
     oi = select_re_df(data, preds, oi_regex)
     oni = select_re_df(data, preds, oni_regex)
 
-    # noi.to_csv('noi.csv', index=False)
-    # oi.to_csv('oi.csv', index=False)
-    # oni.to_csv('oni.csv', index=False)
+    noi.to_csv('noi.csv', index=False)
+    oi.to_csv('oi.csv', index=False)
+    oni.to_csv('oni.csv', index=False)
 
     noi_scores = get_scores(noi)
     oi_scores = get_scores(oi)
