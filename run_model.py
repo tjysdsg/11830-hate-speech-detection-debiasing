@@ -36,7 +36,7 @@ from train_utils import save_model, forward_model
 # for hierarchical explanation algorithms
 from hiex import SamplingAndOcclusionExplain
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("run_model.py")
 
 
 def simple_accuracy(preds, labels):
