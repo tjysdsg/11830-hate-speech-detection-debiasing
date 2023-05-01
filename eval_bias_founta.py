@@ -23,7 +23,7 @@ def get_scores(pred):
         elif prediction[i] == 0 and labels[i] == 0:
             tn += 1
 
-    return [acc, f1, fp / (fp + tn)]
+    return [acc, f1, fp / (fp + tn), fp, tn]
 
 
 def load_predictions(path: str) -> pd.DataFrame:
@@ -107,6 +107,8 @@ def main():
         acc=[noi_scores[0], oi_scores[0], oni_scores[0]],
         f1=[noi_scores[1], oi_scores[1], oni_scores[1]],
         fpr=[noi_scores[2], oi_scores[2], oni_scores[2]],
+        fp=[noi_scores[3], oi_scores[3], oni_scores[3]],
+        tn=[noi_scores[4], oi_scores[4], oni_scores[4]],
     )
     scores = pd.DataFrame(scores_dict)
     scores.to_csv(os.path.join(out_dir, 'founta_bias_eval.csv'), index=False)
