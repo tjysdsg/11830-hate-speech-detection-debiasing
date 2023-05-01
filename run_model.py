@@ -354,10 +354,8 @@ def main():
         )
 
     global_step = 0
-    nb_tr_steps = 0
     tr_loss, tr_reg_loss = 0, 0
     tr_reg_cnt = 0
-    epoch = -1
     val_best_f1 = -1
     val_best_loss = 1e10
     early_stop_countdown = args.early_stop
@@ -414,8 +412,12 @@ def main():
         model.train()
         for _ in trange(int(args.num_train_epochs), desc="Epoch"):
             tr_loss = 0
-            nb_tr_examples, nb_tr_steps = 0, 0
-            for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+
+            # for reporting
+            stats_loss = 0.0
+            stats_loss_n = 0
+
+            for step, batch in enumerate(train_dataloader):
                 batch = tuple(t.to(device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
 
@@ -428,12 +430,15 @@ def main():
                 elif output_mode == "regression":
                     loss_fct = MSELoss()
                     loss = loss_fct(logits.view(-1), label_ids.view(-1))
+                else:
+                    assert False
 
                 if n_gpu > 1:
                     loss = loss.mean()  # mean() to average on multi-gpu.
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
                 tr_loss += loss.item()
+                stats_loss += loss.item()
                 loss.backward()
 
                 # regularize explanations
@@ -446,15 +451,22 @@ def main():
                     tr_reg_loss += reg_loss  # float
                     tr_reg_cnt += reg_cnt
 
-                nb_tr_examples += input_ids.size(0)
-                nb_tr_steps += 1
+                stats_loss_n += 1
                 if (step + 1) % args.gradient_accumulation_steps == 0:
                     optimizer.step()
                     optimizer.zero_grad()
                     scheduler.step()
                     global_step += 1
 
-                if global_step % 400 == 0:
+                # Stats reporting per 100 backward passes
+                if global_step != 0 and global_step % 100 == 0:
+                    logger.info(
+                        f"global_step={global_step}, loss={stats_loss / stats_loss_n:.2f}, lr={scheduler.get_lr()}"
+                    )
+                    stats_loss = 0.0
+                    stats_loss_n = 0
+
+                if global_step % 1000 == 0:
                     val_result = validate(
                         args, model, processor, tokenizer, output_mode, label_list, device,
                         num_labels, task_name, tr_loss, global_step, epoch, explainer
@@ -462,6 +474,7 @@ def main():
                     val_acc, val_f1 = val_result['acc'], val_result['f1']
                     if val_f1 > val_best_f1:
                         val_best_f1 = val_f1
+                        logger.info("Saving/updating the best model checkpoint")
                         if args.local_rank == -1 or torch.distributed.get_rank() == 0:
                             save_model(args, model, tokenizer)
                     # else:
@@ -518,7 +531,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
     # for detailed prediction results
     input_seqs = []
 
-    for input_ids, input_mask, segment_ids, label_ids in tqdm(eval_dataloader, desc="Evaluating"):
+    for input_ids, input_mask, segment_ids, label_ids in eval_dataloader:
         input_ids = input_ids.to(device)
         input_mask = input_mask.to(device)
         segment_ids = segment_ids.to(device)
@@ -539,8 +552,10 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
 
         if args.reg_explanations:
             with torch.no_grad():
-                reg_loss, reg_cnt = explainer.compute_explanation_loss(input_ids, input_mask, segment_ids, label_ids,
-                                                                       do_backprop=False)
+                reg_loss, reg_cnt = explainer.compute_explanation_loss(
+                    input_ids, input_mask, segment_ids, label_ids,
+                    do_backprop=False
+                )
             # eval_loss += reg_loss.item()
             eval_loss_reg += reg_loss
             eval_reg_cnt += reg_cnt
@@ -579,7 +594,7 @@ def validate(args, model, processor, tokenizer, output_mode, label_list, device,
     output_eval_file = os.path.join(args.output_dir, f"eval_results_{global_step:d}_{split}_{args.task_name}.txt")
     with open(output_eval_file, "w", encoding='utf-8') as writer:
         logger.info("***** Eval results *****")
-        logger.info("Epoch %d" % epoch)
+        logger.info(f"Epoch {epoch:d}")
         for key in sorted(result.keys()):
             logger.info("  %s = %s", key, str(result[key]))
             writer.write("%s = %s\n" % (key, str(result[key])))
