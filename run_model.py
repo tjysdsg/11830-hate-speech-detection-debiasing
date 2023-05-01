@@ -349,7 +349,7 @@ def main():
         )
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            args.warmup_proportion,
+            args.warmup_proportion * num_train_optimization_steps,
             num_train_optimization_steps,
         )
 
@@ -438,11 +438,11 @@ def main():
 
                 # regularize explanations
                 # NOTE: backward performed inside this function to prevent OOM
-
                 if args.reg_explanations:
-                    reg_loss, reg_cnt = explainer.compute_explanation_loss(input_ids, input_mask, segment_ids,
-                                                                           label_ids,
-                                                                           do_backprop=True)
+                    reg_loss, reg_cnt = explainer.compute_explanation_loss(
+                        input_ids, input_mask, segment_ids,
+                        label_ids, do_backprop=True
+                    )
                     tr_reg_loss += reg_loss  # float
                     tr_reg_cnt += reg_cnt
 
@@ -454,25 +454,26 @@ def main():
                     scheduler.step()
                     global_step += 1
 
-                if global_step % 200 == 0:
-                    val_result = validate(args, model, processor, tokenizer, output_mode, label_list, device,
-                                          num_labels,
-                                          task_name, tr_loss, global_step, epoch, explainer)
+                if global_step % 400 == 0:
+                    val_result = validate(
+                        args, model, processor, tokenizer, output_mode, label_list, device,
+                        num_labels, task_name, tr_loss, global_step, epoch, explainer
+                    )
                     val_acc, val_f1 = val_result['acc'], val_result['f1']
                     if val_f1 > val_best_f1:
                         val_best_f1 = val_f1
                         if args.local_rank == -1 or torch.distributed.get_rank() == 0:
                             save_model(args, model, tokenizer)
-                    else:
-                        # halve the learning rate
-                        for param_group in optimizer.param_groups:
-                            param_group['lr'] *= 0.5
-                        early_stop_countdown -= 1
-                        logger.info("Reducing learning rate... Early stop countdown %d" % early_stop_countdown)
-                    if early_stop_countdown < 0:
-                        break
-            if early_stop_countdown < 0:
-                break
+                    # else:
+                    #    halve the learning rate
+                    #    for param_group in optimizer.param_groups:
+                    #        param_group['lr'] *= 0.5
+                    #    early_stop_countdown -= 1
+                    #    logger.info(f"Reducing learning rate... Early stop countdown {early_stop_countdown:d}")
+                    # if early_stop_countdown < 0:
+                    #     break
+            # if early_stop_countdown < 0:
+            #     break
             epoch += 1
 
     if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
