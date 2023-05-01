@@ -16,7 +16,7 @@ python run_model.py \
   --do_eval \
   --do_lower_case \
   --data_dir ${data_dir} \
-  --bert_model NA \
+  --bert_model distilbert-base-uncased \
   --max_seq_length 128 \
   --train_batch_size 32 \
   --output_dir "${checkpoint_dir}" \
