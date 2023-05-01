@@ -2,3 +2,4 @@ runs/lm/best_snapshot_devloss_8.975710184677787_iter_52000_model.pt filter=lfs d
 runs/founta_dbert/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
 runs/founta_dbert_soc/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
 runs/founta_embed_dbert/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
+runs/founta_embed_dbert_soc/pytorch_model.bin filter=lfs diff=lfs merge=lfs -text
