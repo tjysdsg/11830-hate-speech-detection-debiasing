@@ -1,7 +1,6 @@
 import os
 import re
 import pandas as pd
-import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, recall_score
 
 
@@ -13,32 +12,18 @@ def get_scores(pred):
     labels = pred['gt_label'].values.tolist()
     acc = accuracy_score(labels, prediction)
     f1 = f1_score(labels, prediction)
-    # recall_pos = recall_score(labels, prediction)  # tp / (tp + fn)
-    recall_neg = recall_score(labels, prediction, pos_label=0)  # becomes tn / (tn + fp)
 
-    return [acc, f1, 1 - recall_neg]
+    fp = 0
+    tn = 0
+    n = len(prediction)
+    assert n == len(labels)
+    for i in range(n):
+        if prediction[i] == 1 and labels[i] == 0:
+            fp += 1
+        elif prediction[i] == 0 and labels[i] == 0:
+            tn += 1
 
-
-def get_scores_demo(df, model):
-    """
-    calculate relevant statistics for measuring bias in user-self reported dataset.
-    """
-
-    prediction = df[model].values.tolist()
-    prediction = [1 if i > 0.5 else 0 for i in prediction]
-    labels = df['dialect'].values.tolist()
-    count_dict = {'aa': [0, 0], 'white': [0, 0], 'all': [0, 0], 'multi': [0, 0], 'hisp': [0, 0], 'other': [0, 0],
-                  'asian': [0, 0]}
-    for i, j in zip(labels, prediction):
-        if i not in count_dict:
-            i = 'other'
-        count_dict[i][1] += 1
-        count_dict['all'][1] += 1
-        if j == 1:
-            count_dict[i][0] += 1
-            count_dict['all'][0] += 1
-    a = np.array([count_dict[i][0] / (count_dict[i][1]) for i in count_dict])
-    return [a[1], a[0], a[0] / a[1], a[0] - a[1]]
+    return [acc, f1, fp / (fp + tn)]
 
 
 def load_predictions(path: str) -> pd.DataFrame:
