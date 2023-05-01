@@ -153,9 +153,6 @@ def get_parser():
     parser.add_argument("--only_positive", action='store_true')
     parser.add_argument("--only_negative", action='store_true')
 
-    # stop after generating x explanation
-    parser.add_argument("--stop", default=100000000, type=int)
-
     # early stopping with decreasing learning rate. 0: direct exit when validation F1 decreases
     parser.add_argument("--early_stop", default=5, type=int)
 
@@ -672,7 +669,6 @@ def explain(args, model, processor, tokenizer, output_mode, label_list, device):
 
     model.train(False)
     for i, (input_ids, input_mask, segment_ids, label_ids) in tqdm(enumerate(eval_dataloader), desc="Evaluating"):
-        if i == args.stop: break
         if hiex_idxs and i not in hiex_idxs: continue
         input_ids = input_ids.to(device)
         input_mask = input_mask.to(device)
