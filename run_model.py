@@ -461,7 +461,7 @@ def main():
                 # Stats reporting per 100 backward passes
                 if global_step != 0 and global_step % 100 == 0:
                     logger.info(
-                        f"global_step={global_step}, loss={stats_loss / stats_loss_n:.2f}, lr={scheduler.get_lr()}"
+                        f"global_step={global_step}, loss={stats_loss / stats_loss_n:.2f}, lr={scheduler.get_last_lr()}"
                     )
                     stats_loss = 0.0
                     stats_loss_n = 0
