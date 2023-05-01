@@ -5,6 +5,7 @@ Based on https://github.com/BrendanKennedy/contextualizing-hate-speech-models-wi
 # The LM used by hierarchical explanation
 
 SOC debiasing requires a pretrained LM. `run_model.py` will automatically train one if not found in `runs/lm/`.
+We provided [a pre-trained LM](runs/lm/best_snapshot_devloss_8.975710184677787_iter_52000_model.pt).
 
 # General notes regarding training scripts
 
@@ -13,18 +14,30 @@ SOC debiasing requires a pretrained LM. `run_model.py` will automatically train 
   I didn't bother to implement AMP using `torch.amp` as BERT-base is not that large.
 - Remove the loop in training scripts if you don't need multiple runs with different seeds
 
-# (Jiyang) Reproducing the original GAB data experiments
+# Training
 
-Using the original scripts:
+- `scripts/fou_vanilla.sh` trains a model without debiasing
+- `scripts/fou_soc.sh` trains a model with SOC debiasing
 
-- `scripts/gab_vanilla.sh` trains a model without debiasing
-- `scripts/gab_soc.sh` trains a model with SOC debiasing
+# Evaluation
 
-# Measure biases towards each identity group
+## Hate Speech Classification Performance
 
-- `scripts/calc_target_group_fpr.sh`
+- Use `scripts/test_toxigen.sh` to get accuracy and F1 scores on Toxigen. It will also create a prediction file used for
+  other tests below.
 
-# Get word weights of Toxigen samples using SOC explanation for all experiments
+## Measure biases on Founta
 
-- `scripts/explain_soc.sh`
+- Run `scripts/test_bias_founta.sh` to get `runs/founta_*/founta_bias_eval.csv`.
+  The bias metrics are from https://arxiv.org/abs/2102.00086 
+
+## Measure biases on Toxigen
+
+- Run `scripts/calc_target_group_fpr.sh` to get FPR of each target group in Toxigen. The output is
+  in `runs/founta_*/toxigen_fpr.csv`.
+
+## Get word weights of Toxigen samples using SOC explanation for all experiments
+
+- `scripts/explain_soc.sh` will calculate the weight of every word in samples specified
+  in `data/toxigen_soc_line_numbers.csv`
 
