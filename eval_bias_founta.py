@@ -99,9 +99,9 @@ def main():
     oi = select_re_df(data, preds, oi_regex)
     oni = select_re_df(data, preds, oni_regex)
 
-    noi.to_csv('noi.csv', index=False)
-    oi.to_csv('oi.csv', index=False)
-    oni.to_csv('oni.csv', index=False)
+    # noi.to_csv('noi.csv', index=False)
+    # oi.to_csv('oi.csv', index=False)
+    # oni.to_csv('oni.csv', index=False)
 
     noi_scores = get_scores(noi)
     oi_scores = get_scores(oi)
